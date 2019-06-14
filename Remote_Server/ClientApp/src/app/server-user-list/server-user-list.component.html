@@ -1,0 +1,19 @@
+<p> server-user-list works!</p>
+<table class='table' *ngIf="userlist">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>SubIP</th>
+      <th>SessionID</th>
+      <th>ActiveTime</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let item of userlist" >
+      <td >{{ item.name }} </td>
+      <td >{{ item.subIP }}</td>  
+      <td >{{ item.sessionID }}</td>
+      <td >{{ item.activeTime }}</td>        
+    </tr>
+  </tbody>
+</table>

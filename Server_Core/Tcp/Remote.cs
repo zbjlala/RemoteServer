@@ -7,6 +7,7 @@ using Server_Model.Entity;
 using Server_Model.Enum;
 using StackExchange.Redis;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net;
 using System.Text;
@@ -48,6 +49,8 @@ namespace Server_Core.Tcp
         private string _ip;
 
         private static Dictionary<String, WebSocket> dicWebSocket = new Dictionary<string, WebSocket>();
+
+        static CancellationTokenSource cts = new CancellationTokenSource();//重连线程的TokenID
 
         public Remote(ServerSocket server, string ip)
         {
@@ -104,11 +107,13 @@ namespace Server_Core.Tcp
         {
             if (initnum < 1)
             {
-                SetRedisKey();
+                SetRedisKey();//根据环境设置Redis连接
                 _serverSocket.pubMessage += SendPubMessage;
                 Interlocked.Increment(ref initnum);
-                GetServerDicAsyn();
-                CheckServerClientStatus();
+                GetServerDicAsyn();//动态从Redis列表中获取在线服务器
+                CheckServerClientStatus();//检查服务器WebSocket状态
+                CheckRedisUserSession();//定时清除Redis UserSession中的不在线用户
+                CheckUserTokenList();// 检查内存中UserTokenList本服务器中的无效UserToken （速度快）
             }
 
             var context = Context;
@@ -170,7 +175,7 @@ namespace Server_Core.Tcp
         {
             return Interlocked.Increment(ref _number);
         }
-
+        #region OnMessage Protocal
         protected override void OnMessage(MessageEventArgs e)
         {
             _receiveSemaphore.WaitOne();
@@ -197,10 +202,6 @@ namespace Server_Core.Tcp
                                 }
                                 break;
                             case (byte)MessageProtocalEnum.Login:
-                                //TaskHelper.Run(()=> {
-
-                                //    //RedisHelper.HashPut(_onlinuserset, userToken.UID , userToken.LastID);
-                                //});
                                 Message msgLoin = new Message()
                                 {
                                     Sender = _serviceSender,
@@ -227,6 +228,12 @@ namespace Server_Core.Tcp
                                 break;
                             case (byte)MessageProtocalEnum.RemoteConnect:
                                 SendCommonPub(msg.Accepter, msg);
+                                break;
+                            case (byte)MessageProtocalEnum.CheckStatus:
+                                SendCheckStatus(msg.Accepter,msg.Sender);
+                                break;
+                            case (byte)MessageProtocalEnum.ReConnection:
+                                WebReConnection();
                                 break;
                             case (byte)MessageProtocalEnum.RemoteStart:
                                 if (Encoding.UTF8.GetString(msg.Data) != VerbalInfo.REFUSE_REMOTE)
@@ -269,8 +276,8 @@ namespace Server_Core.Tcp
                                                     ////发送客服详细信息
                                                     string kefuresultDetails = HttpProxy.GetRequestCommon(InterfaceUrl.USER_INFO, GetUserInfo(msg.Accepter,""));
                                                     SendCommonJson(msg.Sender, JsonResultCommon(Server_Helper.HttpHelper.ResultType.USER_INFO, kefuresultDetails));
-                                                    //    // RedisHelper.HashPut(_onremotingset, msg.Accepter, SerializeHelper.Serialize(GetStartConnectMode(msg.Accepter, msg.Sender)));
-                                                    //    //  RedisHelper.HashPut(_onremotingset, msg.Sender, SerializeHelper.Serialize(GetStartConnectMode(msg.Accepter, msg.Sender)));
+                                                    //RedisHelper.HashPut(_onremotingset, msg.Accepter, SerializeHelper.Serialize(GetStartConnectMode(msg.Accepter, msg.Sender)));
+                                                    //RedisHelper.HashPut(_onremotingset, msg.Sender, SerializeHelper.Serialize(GetStartConnectMode(msg.Accepter, msg.Sender)));
                                                 }
                                                 catch
                                                 {
@@ -305,9 +312,12 @@ namespace Server_Core.Tcp
             _receiveSemaphore.Release();
         }
 
+#endregion
+
         protected override void OnClose(CloseEventArgs e)
         {
             //  Sessions.Broadcast(String.Format("服务器已关闭，{0}", DateTime.Now));
+            string test = "";
          
         }
 
@@ -335,6 +345,7 @@ namespace Server_Core.Tcp
                 //var userToken = UserTokenList.GetUserTokenByUID(UID);
                 //userToken.ActiveDateTime = DateTime.Now;
                 if (userToken != null)
+                {
                     if (userToken.SubIP != _ip)
                     {
                         try
@@ -343,22 +354,22 @@ namespace Server_Core.Tcp
                             //_redis.Publish(userToken.SubIP, SerializeHelper.Serialize(msg));
                             //Console.WriteLine("发布一条消息" + msg.Sender);
                             //  }
-                            if(dicWebSocket.ContainsKey(userToken.SubIP))
+                            if (dicWebSocket.ContainsKey(userToken.SubIP))
                             {
                                 WebSocket socket;
-                                if(dicWebSocket.TryGetValue(userToken.SubIP,out socket))
+                                if (dicWebSocket.TryGetValue(userToken.SubIP, out socket))
                                 {
                                     if (msg.Protocal == (byte)MessageProtocalEnum.File || msg.Protocal == (byte)MessageProtocalEnum.FileSlice)
                                     {
                                         try
                                         {
                                             socket.Send(SerializeHelper.ProtolBufSerialize(msg));
-                                           // Console.WriteLine("服务器转发一条FileMsg,发送人" + msg.Sender + DateTime.Now + userToken.SessionID);
+                                            // Console.WriteLine("服务器转发一条FileMsg,发送人" + msg.Sender + DateTime.Now + userToken.SessionID);
                                         }
-                                        catch(Exception ex)
+                                        catch (Exception ex)
                                         {
-                                            if(dicWebSocket.ContainsKey(userToken.SubIP))
-                                            dicWebSocket.Remove(userToken.SubIP);
+                                            if (dicWebSocket.ContainsKey(userToken.SubIP))
+                                                dicWebSocket.Remove(userToken.SubIP);
                                             Thread.Sleep(5000);
                                         }
                                     }
@@ -367,7 +378,7 @@ namespace Server_Core.Tcp
                                         try
                                         {
                                             socket.Send(SerializeHelper.Serialize(msg));
-                                           // Console.WriteLine("服务器转发一条PrivateMsg,发送人" + msg.Sender + DateTime.Now + userToken.SessionID);
+                                            // Console.WriteLine("服务器转发一条PrivateMsg,发送人" + msg.Sender + DateTime.Now + userToken.SessionID);
                                         }
                                         catch
                                         {
@@ -379,7 +390,7 @@ namespace Server_Core.Tcp
                                 }
                             }
                         }
-                        catch(Exception ex)
+                        catch (Exception ex)
                         {
 
                         }
@@ -391,13 +402,13 @@ namespace Server_Core.Tcp
                             if (msg.Protocal == (byte)MessageProtocalEnum.File || msg.Protocal == (byte)MessageProtocalEnum.FileSlice)
                             {
                                 Sessions.SendTo(SerializeHelper.ProtolBufSerialize(msg), userToken.SessionID);
-                               // Console.WriteLine("发送一条FileMsg,发送人" + msg.Sender + DateTime.Now + userToken.SessionID);
+                                // Console.WriteLine("发送一条FileMsg,发送人" + msg.Sender + DateTime.Now + userToken.SessionID);
                             }
                             else
                             {
 
-                                    Sessions.SendTo(SerializeHelper.Serialize(msg), userToken.SessionID);
-                                  //  Console.WriteLine("发送一条PrivateMsg,发送人" + msg.Sender + DateTime.Now + userToken.SessionID);
+                                Sessions.SendTo(SerializeHelper.Serialize(msg), userToken.SessionID);
+                                //  Console.WriteLine("发送一条PrivateMsg,发送人" + msg.Sender + DateTime.Now + userToken.SessionID);
 
                             }
                         }
@@ -410,12 +421,86 @@ namespace Server_Core.Tcp
 
                         }
                     }
+                }
+                else
+                {
+                    var userSender = RedisHelper.HashGet(USER_SESSION, msg.Sender).ToString();
+                    UserSession userTokenSender = SerializeHelper.Deserialize<UserSession>(userSender);
+                    if(userTokenSender != null)
+                    {
+                        Sessions.SendTo(SerializeHelper.Serialize(new Message {
+                            Sender = _serviceSender,
+                            Protocal = (byte)MessageProtocalEnum.StopSend,
+                            Accepter = userTokenSender.Name
+                        }),userTokenSender.SessionID);
+                    }
+                }
             }
             catch (Exception ex)
             {
                 
             }
         }
+        /// <summary>
+        /// 发送检查服务器状态信息
+        /// </summary>
+        /// <param name=""></param>
+        /// <param name=""></param>
+        protected void SendCheckStatus(string accepter,string sender)
+        {
+            var userTokenString = RedisHelper.HashGet(USER_SESSION, sender).ToString();
+            UserSession userToken = SerializeHelper.Deserialize<UserSession>(userTokenString);
+            try
+            {
+                
+                if (accepter != _ip)
+                {
+
+
+                    if (dicWebSocket.ContainsKey(accepter))
+                    {
+                        WebSocket socket;
+                        if (dicWebSocket.TryGetValue(accepter, out socket))
+                        {
+                            socket.Send(SerializeHelper.Serialize(new Message() {
+                                Sender = sender,
+                                Protocal = (byte)MessageProtocalEnum.CheckStatus,
+                                Accepter = accepter,
+                                Data = Encoding.UTF8.GetBytes("test")
+                            }));
+                        }
+                        Sessions.SendTo(SerializeHelper.Serialize(new Message()
+                        {
+                            Sender = _serviceSender,
+                            Protocal = (byte)MessageProtocalEnum.CheckStatus,
+                            Accepter = userToken.Name,
+                            Data = Encoding.UTF8.GetBytes("3")
+                        }), userToken.SessionID);
+                    }
+                    else
+                    {
+                        Sessions.SendTo(SerializeHelper.Serialize(new Message()
+                        {
+                            Sender = _serviceSender,
+                            Protocal = (byte)MessageProtocalEnum.CheckStatus,
+                            Accepter = userToken.Name,
+                            Data = Encoding.UTF8.GetBytes("2")
+                        }),userToken.SessionID);
+                    }
+                }
+            }
+            catch
+            {
+                Sessions.SendTo(SerializeHelper.Serialize(new Message()
+                {
+                    Sender = _serviceSender,
+                    Protocal = (byte)MessageProtocalEnum.CheckStatus,
+                    Accepter = userToken.Name,
+                    Data = Encoding.UTF8.GetBytes("2")
+                }), userToken.SessionID);
+            }
+        }
+
         /// <summary>
         /// 公共发送消息不走消息队列
         /// </summary>
@@ -547,10 +632,10 @@ namespace Server_Core.Tcp
         {
             try
             {
-                //更新Redis心跳
-                UserSession session = SerializeHelper.Deserialize<UserSession>(RedisHelper.HashGet(USER_SESSION, uid).ToString());
-                if (session != null)
-                    session.ActiveTime = DateTime.Now;
+                ////更新Redis心跳
+                //UserSession session = SerializeHelper.Deserialize<UserSession>(RedisHelper.HashGet(USER_SESSION, uid).ToString());
+                //if (session != null)
+                //    session.ActiveTime = DateTime.Now;
                 //更新UserList心跳
 
                 var item = UserTokenList.GetUserTokenByUID(uid);
@@ -638,7 +723,7 @@ namespace Server_Core.Tcp
                         continue;
                     }
                 }
-            }); 
+            },cts.Token); 
         }
         /// <summary>
         /// 定时检查当前Dictionary中客户端连接状态断线的重新连接
@@ -729,6 +814,89 @@ namespace Server_Core.Tcp
                 USER_SESSION = "RemoteUserSeesion";
             }
         }
+
+        private void WebReConnection()
+        {
+            try
+            {
+                cts.Cancel();
+                cts = new CancellationTokenSource();
+                this.GetServerDicAsyn();
+            }
+            catch(Exception ex)
+            {
+
+            }
+        }
+        /// <summary>
+        /// 每隔一段时间检查Redis UserSession 中存在的不在线用户 删除
+        /// </summary>
+        private void CheckRedisUserSession()
+        {
+            Task.Factory.StartNew(() => {
+                while (true)
+                {
+                    string[] userlist = RedisHelper.HashValues(USER_SESSION);
+                    if (userlist.Length > 0)
+                    {
+                        foreach (var item in userlist)
+                        {
+                            UserSession userSession = SerializeHelper.Deserialize<UserSession>(item);
+                            try
+                            {
+
+                                if (!Sessions.PingTo(userSession.SessionID))
+                                {
+                                    RedisHelper.HashDelete(USER_SESSION, userSession.Name);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                try
+                                {
+                                    RedisHelper.HashDelete(USER_SESSION, userSession.Name);
+                                }
+                                catch
+                                {
+
+                                }
+                                continue;
+                            }
+                        }
+                    }
+                    Thread.Sleep(10*60*1000);
+                }
+            });
+        }
+        /// <summary>
+        /// 检查内存中UserTokenList本服务器中的无效UserToken （速度快）
+        /// </summary>
+        public void CheckUserTokenList()
+        {
+            Task.Factory.StartNew(() => {
+                while(true)
+                {
+                    ConcurrentDictionary<string, UserSession> dic = UserTokenList.GetOnlinUserList();
+                    foreach(var item in dic)
+                    {
+                        try
+                        {
+
+                          if(item.Value.ActiveTime.AddSeconds(60)< DateTime.Now)
+                            {
+                                RedisHelper.HashDelete(USER_SESSION,item.Value.Name);
+                                UserTokenList.DelOnlineID(item.Key);
+                            }
+                        }
+                        catch
+                        {
+
+                        }
+                    }
+                    Thread.Sleep(5000);
+                }
+            });
+        }
         #endregion
 
 
@@ -775,20 +943,20 @@ namespace Server_Core.Tcp
 
         public string JsonResultCommon(Server_Helper.HttpHelper.ResultType type, string result)
         {
-            //string userip = IPAddress.Parse(Context.UserEndPoint.Address.ToString()).ToString();
+            string userip = IPAddress.Parse(Context.UserEndPoint.Address.ToString()).ToString();
             ////获取客户IP，需要在nginx里进行配置，暂不能使用
-            string X_Real_IP = IPAddress.Parse(Context.Headers["X-Real-IP"].ToString()).ToString();
-            string X_Forwarded_For = IPAddress.Parse(Context.Headers["X-Forwarded-For"].ToString()).ToString();
-            //Console.WriteLine("连接用户userip:" + X_Forwarded_For + " X-Real-IP:" + X_Real_IP + "    X-Forwarded-For:" + X_Forwarded_For);
+            //string X_Real_IP = IPAddress.Parse(Context.Headers["X-Real-IP"].ToString()).ToString();
+            //string X_Forwarded_For = IPAddress.Parse(Context.Headers["X-Forwarded-For"].ToString()).ToString();
+            //Console.WriteLine("连接用户userip:" + userip + " X-Real-IP:" + X_Real_IP + "    X-Forwarded-For:" + X_Forwarded_For);
 
             IDictionary<string, string> valuePairs = new Dictionary<string, string>();
             valuePairs.Add("type", type.ToString());
             valuePairs.Add("result", result);
-            valuePairs.Add("ip", X_Real_IP);
+            valuePairs.Add("ip", userip);
             try
             {
 
-                 string resultDetails = HttpProxy.GetRequestCommon(InterfaceUrl.IP_Address, GetIPAdress(X_Real_IP));
+                 string resultDetails = HttpProxy.GetRequestCommon(InterfaceUrl.IP_Address, GetIPAdress(userip));
                 //string resultDetails = "";
                 valuePairs.Add("ip_Adress", resultDetails);
             }
@@ -797,7 +965,7 @@ namespace Server_Core.Tcp
                 Console.WriteLine("查询IP地址出错");
                 valuePairs.Add("ip_Adress", "");
             }
-            return SerializeHelper.Serialize(valuePairs);
+            return SerializeHelper.Serialize(valuePairs); 
         }
 
     }

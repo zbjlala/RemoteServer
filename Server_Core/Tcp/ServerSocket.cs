@@ -21,7 +21,6 @@ using System.Threading;
 using WebSocketSharp;
 using WebSocketSharp.Server;
 using System.Configuration;
-using Microsoft.Extensions.Configuration;
 using Server_Helper.StackExchangeRedis;
 using StackExchange.Redis;
 

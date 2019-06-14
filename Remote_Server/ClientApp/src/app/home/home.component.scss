@@ -1,0 +1,29 @@
+li {
+    list-style: none;
+}
+/* Application-wide Styles */
+h1 {
+    color: #369;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 280%;
+  }
+  h2, h3 {
+    color: #444;
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: lighter;
+  }
+  body {
+    margin: 2em;
+  }
+
+  select {
+    width: 70px;
+    height: 37px;
+    text-align-last: center;
+    -moz-text-align-last: right;  /* 兼容 Firefox*/
+}
+
+  /* everywhere else */
+  * {
+    font-family: Arial, Helvetica, sans-serif;
+  }

@@ -25,6 +25,9 @@ namespace Server_Model.Enum
         RemoteConnect = 8,
         RemoteStart = 9,
         FileSlice = 10,
+        CheckStatus = 11,
+        ReConnection = 12,
+        StopSend = 13,
         RLogin = 101,
         RSubscribe = 103
     }

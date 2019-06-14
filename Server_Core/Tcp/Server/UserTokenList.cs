@@ -38,51 +38,6 @@ namespace Server_Core.Tcp.Server
         /// </summary>
         private static MutiThreadHelper mutiThreadHelper = new MutiThreadHelper();
 
-    
-
-
-
-       
-
-        static UserTokenList()
-        {
-            //TaskHelper.Run(() =>
-            //{
-            //    while (true)
-            //    {
-            //        try
-            //        {
-            //            if (_OnlineUsers != null && !_OnlineUsers.IsEmpty)
-            //            {
-            //                var list = _OnlineUsers.Values.ToList();
-            //                if (list != null)
-            //                {
-            //                    foreach (var item in list)
-            //                    {
-            //                        if (item.ActiveTime.AddSeconds(30) < DateTime.Now)
-            //                        {
-            //                            try
-            //                            {
-            //                                _redis.HashDelete(USER_SESSION,item.Name);
-            //                                Console.WriteLine(String.Format("用户{0}失去连接，服务器已断开",item.Name));
-            //                            }
-            //                            catch
-            //                            {
-
-            //                            }
-            //                        }
-            //                    }
-            //                    list.Clear();
-            //                }
-            //            }
-            //        }
-            //        catch { }
-
-            //        Thread.Sleep(1000);
-            //    }
-            //});
-        }
-
 
 
         public static int GetCount()
@@ -179,10 +134,11 @@ namespace Server_Core.Tcp.Server
             return null;
         }
 
-        //public static ConcurrentDictionary<string, IUserToken> GetOnlinUserList()
-        //{
-        //    return _OnlineUsers;
-        //}
+        public static ConcurrentDictionary<string, UserSession> GetOnlinUserList()
+        {
+            return _OnlineUsers;
+        }
+
         //#endregion
         //#region 参数模型
         ///// <summary>

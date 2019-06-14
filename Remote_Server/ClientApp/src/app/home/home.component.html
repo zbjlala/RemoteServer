@@ -1,0 +1,35 @@
+
+
+<table class='table' style="width: 900px" *ngIf="tableData">
+  <thead>
+    <tr>
+      <th>ServerIP {{change}}</th>
+      <th>ServerPoint</th>
+      <th>TargetIP</th>
+      <th>检查</th>
+      <th>重连</th>
+      <th>状态</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let item of tableData" >
+     <!--<td routerLink="/serveruserlist/{{ item.serverIP}}">{{ item.serverIP }} </td>-->
+     <td (click)="onSelect(item.serverIP,'1')">{{ item.serverIP }}
+      <td (click)="onSelect(item.serverIP,'1')">{{ item.serverPoint }}</td>   
+      <td>
+          <select style="width: 200px" #select (change)="selectChange(select.value)" >
+            <option *ngFor="let option of serverList" [value]="option.serverIP">{{option.serverIP}}</option>
+          </select> 
+      </td>
+      <td>
+        <button type="button" class="btn btn-primary btn-sm"  (click)="checkKeyUp(item,select.value)">检查</button>
+      </td>
+      <td>
+        <button type="button" class="btn btn-warning btn-sm"  (click)="reConnectkKeyUp(item,select.value)">重连</button>
+      </td>
+      <td>
+        <label>{{item.msg}}</label>
+      </td>
+    </tr>
+  </tbody>
+</table>
