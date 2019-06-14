@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="2.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Server_Helper\Server_Helper.csproj" />
+    <ProjectReference Include="..\Server_Model\Server_Model.csproj" />
+    <ProjectReference Include="..\websocket-sharp\websocket-sharp.csproj" />
+  </ItemGroup>
+
+</Project>

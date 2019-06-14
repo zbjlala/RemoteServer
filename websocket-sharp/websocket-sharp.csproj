@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>websocket_sharp</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="obj\Debug\netstandard2.0\websocket-sharp.AssemblyInfo.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="obj\Debug_Ubuntu\websocket-sharp.csproj.FileListAbsolute.txt" />
+    <Content Include="obj\project.assets.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="obj\Debug\netstandard2.0\websocket-sharp.AssemblyInfoInputs.cache" />
+    <None Include="obj\Debug\netstandard2.0\websocket-sharp.assets.cache" />
+    <None Include="obj\Debug\netstandard2.0\websocket-sharp.csproj.CoreCompileInputs.cache" />
+    <None Include="obj\Debug\netstandard2.0\websocket-sharp.csprojAssemblyReference.cache" />
+    <None Include="obj\Debug_Ubuntu\DesignTimeResolveAssemblyReferencesInput.cache" />
+    <None Include="obj\Debug_Ubuntu\websocket-sharp.csproj.CoreCompileInputs.cache" />
+    <None Include="obj\Debug_Ubuntu\websocket-sharp.csprojAssemblyReference.cache" />
+    <None Include="obj\Debug_Ubuntu\websocket-sharp.dll" />
+    <None Include="obj\Debug_Ubuntu\websocket-sharp.pdb" />
+    <None Include="obj\websocket-sharp.csproj.nuget.cache" />
+    <None Include="obj\websocket-sharp.csproj.nuget.g.props" />
+    <None Include="obj\websocket-sharp.csproj.nuget.g.targets" />
+    <None Include="websocket-sharp.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="obj\Debug_Ubuntu\TempPE\" />
+  </ItemGroup>
+
+</Project>

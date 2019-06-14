@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="MS\**" />
+    <EmbeddedResource Remove="MS\**" />
+    <None Remove="MS\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Server_Core\Server_Core.csproj" />
+    <ProjectReference Include="..\Server_Helper\Server_Helper.csproj" />
+    <ProjectReference Include="..\Server_Model\Server_Model.csproj" />
+  </ItemGroup>
+
+</Project>

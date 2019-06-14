@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Remote_Server": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "COMPLUS_ZapDisable": "1"
+      }
+    }
+  }
+}
